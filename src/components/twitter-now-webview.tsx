@@ -78,6 +78,150 @@ const TRANSLATE_INJECTION_SCRIPT = `
 true;
 `;
 
+// Hides posts from a list of usernames, ported from the "Block Specific
+// Users' Posts (twitter.now)" userscript. Runs once per WebView page load;
+// the MutationObserver keeps it applied as the SPA renders new posts.
+const BLOCK_USERS_INJECTION_SCRIPT = `
+(function () {
+  if (window.__twitterNowBlockUsersInjected) return true;
+  window.__twitterNowBlockUsersInjected = true;
+
+  var STORAGE_KEY = 'blocked_users_twitternow';
+  // Default usernames blocked out of the box (lowercase, no @)
+  var DEFAULT_BLOCKED_USERS = ['kaitlyn', 'not_lake', 'lake', 'karaa', 'elonmask'];
+  var ARIA_USERNAME_RE = /@([A-Za-z0-9_]+)/;
+
+  function normalize(name) {
+    return name.trim().toLowerCase().replace(/^@/, '');
+  }
+
+  function loadBlockedUsers() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : DEFAULT_BLOCKED_USERS.slice();
+    } catch (e) {
+      return DEFAULT_BLOCKED_USERS.slice();
+    }
+  }
+
+  function saveBlockedUsers(list) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+  }
+
+  var blockedUsers = loadBlockedUsers();
+
+  function findPostCard(el) {
+    return el.closest('article') || el;
+  }
+
+  function resetCheckedFlags() {
+    document.querySelectorAll('[data-block-checked="1"]').forEach(function (el) {
+      delete el.dataset.blockChecked;
+    });
+  }
+
+  function hideBlockedPosts() {
+    var candidates = document.querySelectorAll('[aria-label*="@"]');
+    candidates.forEach(function (el) {
+      if (el.dataset.blockChecked === '1') return;
+      el.dataset.blockChecked = '1';
+
+      var label = el.getAttribute('aria-label') || '';
+      var match = label.match(ARIA_USERNAME_RE);
+      if (!match) return;
+
+      var username = normalize(match[1]);
+      if (blockedUsers.indexOf(username) === -1) return;
+
+      var card = findPostCard(el);
+      if (card) card.style.display = 'none';
+    });
+  }
+
+  function blockUserNow(username) {
+    if (blockedUsers.indexOf(username) === -1) {
+      blockedUsers.push(username);
+      saveBlockedUsers(blockedUsers);
+    }
+    resetCheckedFlags();
+    hideBlockedPosts();
+  }
+
+  function makeBlockButton(username) {
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.title = 'Block @' + username;
+    btn.setAttribute('aria-label', 'Block @' + username);
+    btn.dataset.blockBtn = '1';
+    btn.style.cssText =
+      'display:inline-flex;align-items:center;justify-content:center;' +
+      'width:32px;height:32px;padding:0;margin-left:2px;border:none;' +
+      'border-radius:9999px;background:rgba(127,127,127,0.15);' +
+      'cursor:pointer;opacity:1;flex-shrink:0;position:relative;z-index:5;';
+    btn.innerHTML =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" ' +
+      'fill="none" stroke="#71767b" stroke-width="2.25" stroke-linecap="round" ' +
+      'stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle>' +
+      '<line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg>';
+
+    var svg = btn.querySelector('svg');
+
+    btn.addEventListener('mouseenter', function () {
+      btn.style.background = 'rgba(239,68,68,0.18)';
+      svg.setAttribute('stroke', '#ef4444');
+    });
+    btn.addEventListener('mouseleave', function () {
+      btn.style.background = 'rgba(127,127,127,0.15)';
+      svg.setAttribute('stroke', '#71767b');
+    });
+
+    btn.addEventListener('click', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (confirm('Block @' + username + '? Their posts will be hidden.')) {
+        blockUserNow(username);
+      }
+    });
+
+    return btn;
+  }
+
+  function addBlockButtons() {
+    var optionButtons = document.querySelectorAll(
+      'button[aria-label="Post options"]:not([data-block-btn-added])'
+    );
+    optionButtons.forEach(function (optionsBtn) {
+      optionsBtn.dataset.blockBtnAdded = '1';
+
+      var article = optionsBtn.closest('article');
+      if (!article) return;
+
+      var profileLink = article.querySelector('[aria-label^="View @"]');
+      if (!profileLink) return;
+
+      var label = profileLink.getAttribute('aria-label') || '';
+      var match = label.match(ARIA_USERNAME_RE);
+      if (!match) return;
+
+      var username = normalize(match[1]);
+      var blockBtn = makeBlockButton(username);
+      optionsBtn.parentElement.insertBefore(blockBtn, optionsBtn);
+    });
+  }
+
+  var observer = new MutationObserver(function () {
+    hideBlockedPosts();
+    addBlockButtons();
+  });
+
+  observer.observe(document.body, { childList: true, subtree: true });
+
+  hideBlockedPosts();
+  addBlockButtons();
+})();
+true;
+`;
+
 type Props = {
   initialUrl: string;
 };
@@ -166,6 +310,7 @@ export function TwitterNowWebView({ initialUrl }: Props) {
           bounces={false}
           overScrollMode="never"
           sharedCookiesEnabled
+          injectedJavaScript={BLOCK_USERS_INJECTION_SCRIPT}
           onShouldStartLoadWithRequest={handleShouldStartLoad}
           onNavigationStateChange={handleNavigationStateChange}
           onLoadEnd={() => setLoading(false)}
