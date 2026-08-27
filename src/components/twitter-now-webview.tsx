@@ -178,9 +178,9 @@ const BLOCK_USERS_INJECTION_SCRIPT = `
     btn.addEventListener('click', function (e) {
       e.preventDefault();
       e.stopPropagation();
-      if (confirm('Block @' + username + '? Their posts will be hidden.')) {
-        blockUserNow(username);
-      }
+      // window.confirm()/alert() aren't reliably wired up to a native dialog
+      // inside a WebView, so block immediately instead of gating on them.
+      blockUserNow(username);
     });
 
     return btn;
