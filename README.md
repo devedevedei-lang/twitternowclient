@@ -2,11 +2,17 @@
 
 An open-source, unofficial mobile app for [twitter.now](https://twitter.now/), built with Expo. Not affiliated with, endorsed by, or sponsored by Operation Bluebird, Inc. or twitter.now.
 
+## Download
+
+**Android**: [Download the latest APK](https://github.com/devedevedei-lang/twitternowclient/releases/latest/download/twitternowclient.apk). You'll need to allow "install unknown apps" for your browser/file manager, since this isn't distributed through the Play Store.
+
+**iOS**: not available yet. Apple doesn't allow installing apps outside the App Store / TestFlight without a paid Apple Developer account, so this needs more setup before it can ship.
+
 ## Why a WebView wrapper?
 
 twitter.now doesn't publish a public API, and its [Terms of Service](https://twitter.now/terms-of-service/) prohibit automated access, scraping, and reverse-engineering the software behind the service. So instead of talking to a private API, this app displays the official twitter.now web app (`https://app.twitter.now/`) inside a native screen — the same content you'd see in a mobile browser, just wrapped in a proper app shell:
 
-- Native bottom tab bar and splash screen (via Expo Router's Native Tabs)
+- Full-screen native app shell with a splash screen (via Expo Router)
 - Persistent login across app restarts (the WebView's cookie jar is not cleared between launches)
 - Android hardware back button navigates the WebView history
 - Links to third-party domains (payment, OAuth, etc.) open in the system browser instead of being trapped inside the app
