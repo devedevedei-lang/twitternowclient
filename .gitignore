@@ -33,9 +33,9 @@ yarn-error.*
 # local env files
 .env*.local
 
-# Firebase (FCM push credentials — never commit these)
-google-services.json
-GoogleService-Info.plist
+# Firebase secrets — never commit these. google-services.json is NOT a
+# secret (Google's own guidance: safe to ship in client apps) and must stay
+# tracked, since `eas build --local` only archives git-tracked files.
 *firebase-adminsdk*.json
 *service-account*.json
 
