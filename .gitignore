@@ -42,5 +42,8 @@ example
 /ios
 /android
 
+# local eas build --local output
+/build
+
 .serena
 .claude
