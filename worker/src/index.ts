@@ -149,7 +149,14 @@ export default {
       if (typeof token !== 'string' || !isValidExpoPushToken(token)) {
         return Response.json({ error: 'invalid token' }, { status: 400 });
       }
-      await env.MONITOR_KV.put(`${TOKEN_PREFIX}${token}`, String(Date.now()));
+      // The app re-registers on every launch (whenever permission is
+      // already granted), so skip the write entirely when this token is
+      // already known — trading a cheap read for an otherwise-redundant
+      // write against the much tighter write quota.
+      const key = `${TOKEN_PREFIX}${token}`;
+      if ((await env.MONITOR_KV.get(key)) === null) {
+        await env.MONITOR_KV.put(key, String(Date.now()));
+      }
       return Response.json({ ok: true });
     }
 
