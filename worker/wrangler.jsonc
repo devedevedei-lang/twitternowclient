@@ -1,0 +1,16 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "twitternowclient-uptime-monitor",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-28",
+  "triggers": {
+    "crons": ["* * * * *"]
+  },
+  "kv_namespaces": [{ "binding": "MONITOR_KV", "id": "cb29fecb2e5c41b881563776bdeb4029" }],
+  "vars": {
+    "TARGET_URL": "https://app.twitter.now/"
+  },
+  "observability": {
+    "enabled": true
+  }
+}

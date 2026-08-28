@@ -45,5 +45,8 @@ example
 # local eas build --local output
 /build
 
+# wrangler local dev state
+.wrangler
+
 .serena
 .claude

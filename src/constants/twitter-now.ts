@@ -20,3 +20,9 @@ export function isAllowedWebViewHost(url: string) {
     return false;
   }
 }
+
+/**
+ * Backend that polls app.twitter.now once a minute and pushes a
+ * notification when it goes down or comes back up. See `worker/`.
+ */
+export const UptimeMonitorUrl = 'https://twitternowclient-uptime-monitor.sasamori-negi.workers.dev';

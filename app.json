@@ -38,6 +38,12 @@
             "buildArchs": ["arm64-v8a", "armeabi-v7a"]
           }
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#12141A"
+        }
       ]
     ],
     "experiments": {
