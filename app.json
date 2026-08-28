@@ -9,6 +9,7 @@
     "userInterfaceStyle": "automatic",
     "android": {
       "package": "dev.sasamorinegi.twitternowclient",
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#12141A",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
