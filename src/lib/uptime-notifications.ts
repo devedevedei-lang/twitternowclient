@@ -43,6 +43,18 @@ export async function registerForUptimeNotifications() {
   try {
     const Notifications = await loadNotifications();
 
+    // Without a handler, a notification that arrives while the app is in
+    // the foreground is received but never shown — it looks identical to
+    // total delivery failure. Show it like any background notification.
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowBanner: true,
+        shouldShowList: true,
+        shouldPlaySound: true,
+        shouldSetBadge: false,
+      }),
+    });
+
     if (Platform.OS === 'android') {
       await Notifications.setNotificationChannelAsync('uptime-alerts', {
         name: 'Server status alerts',
