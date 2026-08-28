@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   BackHandler,
+  Linking,
   Modal,
   Platform,
   Pressable,
@@ -24,6 +25,12 @@ import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { isAllowedWebViewHost } from '@/constants/twitter-now';
 import { useTheme } from '@/hooks/use-theme';
+import { getDownScreenStrings } from '@/lib/down-screen-strings';
+import {
+  getNotificationPermissionStatus,
+  requestNotificationPermission,
+  type NotificationPermissionStatus,
+} from '@/lib/uptime-notifications';
 
 // Loads Google's client-side page-translate widget into the WebView, the
 // same mechanism sites use to embed a "Translate this page" banner. Safe to
@@ -279,6 +286,20 @@ export function TwitterNowWebView({ initialUrl }: Props) {
   const [menuVisible, setMenuVisible] = useState(false);
   const [manageBlockedVisible, setManageBlockedVisible] = useState(false);
   const [blockedUsers, setBlockedUsers] = useState<string[]>([]);
+  const [notificationStatus, setNotificationStatus] = useState<NotificationPermissionStatus | null>(null);
+
+  useEffect(() => {
+    if (!error) return;
+    getNotificationPermissionStatus().then(setNotificationStatus);
+  }, [error]);
+
+  const handleEnableNotifications = useCallback(async () => {
+    if (notificationStatus === 'denied') {
+      Linking.openSettings();
+      return;
+    }
+    setNotificationStatus(await requestNotificationPermission());
+  }, [notificationStatus]);
 
   const translatePage = useCallback(() => {
     webViewRef.current?.injectJavaScript(TRANSLATE_INJECTION_SCRIPT);
@@ -508,25 +529,52 @@ export function TwitterNowWebView({ initialUrl }: Props) {
             </Pressable>
           </Pressable>
         </Modal>
-        {error && (
-          <ThemedView style={styles.overlay}>
-            <SafeAreaView style={styles.centeredContent}>
-              <ThemedText type="subtitle" style={styles.centerText}>
-                Can&apos;t reach twitter.now
-              </ThemedText>
-              <ThemedText style={styles.centerText} themeColor="textSecondary">
-                {error}
-              </ThemedText>
-              <Pressable
-                onPress={retry}
-                style={({ pressed }) => [styles.retryButton, pressed && styles.pressed]}>
-                <ThemedView type="backgroundElement" style={styles.retryButtonInner}>
-                  <ThemedText type="link">Retry</ThemedText>
-                </ThemedView>
-              </Pressable>
-            </SafeAreaView>
-          </ThemedView>
-        )}
+        {error &&
+          (() => {
+            const strings = getDownScreenStrings();
+            const needsNotificationAction =
+              notificationStatus === 'undetermined' || notificationStatus === 'denied';
+            return (
+              <ThemedView style={styles.overlay}>
+                <SafeAreaView style={styles.centeredContent}>
+                  <ThemedText type="subtitle" style={styles.centerText}>
+                    {strings.title}
+                  </ThemedText>
+                  <ThemedText style={styles.centerText} themeColor="textSecondary">
+                    {strings.message}
+                  </ThemedText>
+                  <ThemedText style={styles.centerText} themeColor="textSecondary">
+                    {error}
+                  </ThemedText>
+                  {notificationStatus && notificationStatus !== 'unsupported' && (
+                    <ThemedText style={styles.centerText} themeColor="textSecondary">
+                      {strings.notifyPromise}
+                    </ThemedText>
+                  )}
+                  {needsNotificationAction && (
+                    <Pressable
+                      onPress={handleEnableNotifications}
+                      style={({ pressed }) => [styles.retryButton, pressed && styles.pressed]}>
+                      <ThemedView type="backgroundElement" style={styles.retryButtonInner}>
+                        <ThemedText type="link">
+                          {notificationStatus === 'denied'
+                            ? strings.openNotificationSettings
+                            : strings.enableNotifications}
+                        </ThemedText>
+                      </ThemedView>
+                    </Pressable>
+                  )}
+                  <Pressable
+                    onPress={retry}
+                    style={({ pressed }) => [styles.retryButton, pressed && styles.pressed]}>
+                    <ThemedView type="backgroundElement" style={styles.retryButtonInner}>
+                      <ThemedText type="link">{strings.retry}</ThemedText>
+                    </ThemedView>
+                  </Pressable>
+                </SafeAreaView>
+              </ThemedView>
+            );
+          })()}
       </SafeAreaView>
     </ThemedView>
   );
