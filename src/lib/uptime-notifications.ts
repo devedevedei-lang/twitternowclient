@@ -1,5 +1,4 @@
 import Constants from 'expo-constants';
-import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
 import { UptimeMonitorUrl } from '@/constants/twitter-now';
@@ -9,11 +8,20 @@ import { UptimeMonitorUrl } from '@/constants/twitter-now';
  * push notification when app.twitter.now goes down or comes back up. Best
  * effort — permission denial or a network hiccup here should never block
  * app usage, so every failure is swallowed.
+ *
+ * expo-notifications must be imported dynamically: importing it statically
+ * throws at module-evaluation time in Expo Go on Android (remote push was
+ * removed from Expo Go in SDK 53+), which would crash the whole module
+ * graph before this function's own try/catch ever runs. A dynamic import's
+ * rejection, by contrast, lands inside the try/catch below like any other
+ * awaited failure — so this remains a no-op in Expo Go instead of a crash.
  */
 export async function registerForUptimeNotifications() {
   if (Platform.OS === 'web') return;
 
   try {
+    const Notifications = await import('expo-notifications');
+
     if (Platform.OS === 'android') {
       await Notifications.setNotificationChannelAsync('uptime-alerts', {
         name: 'Server status alerts',
