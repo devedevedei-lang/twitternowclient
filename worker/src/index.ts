@@ -82,6 +82,13 @@ async function sendPushNotifications(tokens: string[], title: string, body: stri
 }
 
 export default {
+  // Workers KV's free tier caps writes at 1,000/day. A naive "write on every
+  // check" implementation would blow through that during any outage longer
+  // than ~16 hours (1-minute cron = up to 1,440 checks/day). So this only
+  // writes when something actually needs to be persisted for next time:
+  // reaching the failure threshold, recovering, or resetting a counter that
+  // was mid-count. Once state is settled (steady 'up' with a zero counter,
+  // or steady 'down'), repeated identical checks write nothing at all.
   async scheduled(_controller: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
     const targetUrl = env.TARGET_URL || DEFAULT_TARGET_URL;
     const ok = await checkTarget(targetUrl);
@@ -90,6 +97,8 @@ export default {
 
     if (ok) {
       const wasDown = status.state === 'down';
+      if (!wasDown && status.consecutiveFailures === 0) return; // already settled up
+
       await saveStatus(env.MONITOR_KV, {
         state: 'up',
         consecutiveFailures: 0,
@@ -103,8 +112,10 @@ export default {
       return;
     }
 
+    if (status.state === 'down') return; // already settled down — nothing new to persist
+
     const consecutiveFailures = status.consecutiveFailures + 1;
-    const shouldDeclareDown = status.state === 'up' && consecutiveFailures >= FAILURE_THRESHOLD;
+    const shouldDeclareDown = consecutiveFailures >= FAILURE_THRESHOLD;
     await saveStatus(env.MONITOR_KV, {
       state: shouldDeclareDown ? 'down' : status.state,
       consecutiveFailures,
