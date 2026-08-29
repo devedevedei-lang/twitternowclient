@@ -19,6 +19,12 @@ type Status = {
   lastChangedAt: number;
 };
 
+// twitter.now redirects to a maintenance page (which itself returns a
+// perfectly healthy 200) while the real app is down, so a plain res.ok
+// check can't tell "down" from "up" — the final URL after redirects is the
+// only signal that distinguishes them.
+const MAINTENANCE_URL_MARKER = 'maintenance';
+
 async function checkTarget(url: string): Promise<boolean> {
   try {
     const response = await fetch(url, {
@@ -27,7 +33,9 @@ async function checkTarget(url: string): Promise<boolean> {
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       headers: { 'user-agent': 'twitternowclient-uptime-monitor' },
     });
-    return response.ok;
+    if (!response.ok) return false;
+    if (response.url.toLowerCase().includes(MAINTENANCE_URL_MARKER)) return false;
+    return true;
   } catch {
     return false;
   }
